@@ -1,0 +1,69 @@
+
+		#########################################
+		#    Modelling simulations methods      #
+		#########################################
+
+1. Create network with nodes and rules. Define inputs and basal values when necessary.
+2. Create 2 .txt files
+	a) Node file with 4 columns 
+
+		Node	Name	Max level	Input
+		int 	names    1 or 2	    0 or 1
+		21		IL12R		1			0
+
+		
+	b) Rules file with 4 columns
+
+		Target	Name	Value	Formulae
+		16		IFNGR	 1		IFNGR1 & IFNGR2 & (IFNG | IFNG_e) & !miR-155-5p
+
+		*Do not include inputs or unregulated nodes (with no incoming edges, normally basal value = 1)
+
+
+3. Use GISsimR.R function
+
+The function requires the 2 .txt files, plus the definition of the initial state, how many time points and how many actualizations:
+
+IL2 <- ginsimrun(state_IL2_AJ, AJ_nodes, AJ_rules, 100, 100)
+ 
+state_IL2_AJ <- c(0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)
+
+
+4. Simulations are being run for the Naldi model and all Th subtypes stimulation.
+	Further signalling from other immune cells such as IL18 by macrophages will be taken into account eventually.
+
+
+5. Plot data
+
+
+
+
+-------------------------------------
+
+STEPS
+
+ginsimrun=function(state, vars, rules,ntime,nrep)
+
+Naldi_Th17 <- ginsimrun(state_Th17_Naldi, Naldi_nodes, Naldi_rules, 1000, 20000)
+
+--------
+
+Naldi_Th17_b <- ginsimrun(state_Th17_Naldi, Naldi_nodes, Naldi_rules, 50, 1000)
+
+miR-155-5p:
+
+> Naldi_Th17_b
+ [1] 0.000 0.000 0.000 0.000 0.000 0.002 0.007 0.020 0.051 0.083 0.140 0.228 0.357 0.490 0.670 0.831 0.917 1.000 1.000 1.000 1.000 1.000 1.000 1.000
+[25] 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000
+[49] 1.000 1.000 1.000
+
+
+miR-34c-5p:
+
+> Naldi_Th17_34c
+ [1] 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+
+WARNINGS:
+
+50: In solvedrules[i] = eval(parse(text = ruleset[i])) :
+  number of items to replace is not a multiple of replacement length
