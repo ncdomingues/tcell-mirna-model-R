@@ -28,6 +28,7 @@ Rscript scripts/01_stimulations.R      # five stimulation conditions
 Rscript scripts/02_mirna_conditions.R  # the four-condition miRNA comparison
 Rscript scripts/03_mir34c_tf_variants.R  # twelve promoter hypotheses
 Rscript scripts/04_validate_naldi.R    # does the biology hold up at all?
+Rscript scripts/05_compare_tables.R    # working table vs. the thesis's Table 5
 ```
 
 ## What's here
@@ -42,9 +43,11 @@ model/
   rules.txt          86 formulas, verbatim -- including two mis-targeted rows
   rules_corrected.txt  the same table with those two rows fixed
   mir34c_variants/   twelve competing formulas for the miR-34c-5p promoter
+  thesis_table5/     Table 5 as printed in the thesis, with its annotations
   naldi2010/         Naldi et al. 2010, as transcribed and extended in 2017
   abou_jaoude2015/   Abou-Jaoude et al. 2015, likewise
-scripts/             the four analyses, in order
+scripts/             the five analyses, in order
+comparison/          the Python rebuild's published numbers, for cross-checking
 tests/test_engine.R  52 tests: notation, update semantics, table integrity
 original/            the 2017 files, untouched -- engine, scripts, procedures
 ginsim/              the .zginml network files, openable in GINsim
@@ -52,6 +55,7 @@ figures/             regenerated figures, plus figures/original_2017/
 output/              CSV results
 MODEL_NOTES.md       what the model is, and every repair made to it
 VALIDATION.md        what has actually been checked, and what failed
+COMPARISON.md        the working table against the thesis's published Table 5
 ```
 
 ## The model
@@ -128,6 +132,37 @@ That is a failed positive control, not a curiosity: miR-155-deficient T cells
 are Th2-biased and make *less* IFN-gamma, so miR-155-5p should promote Th1, not
 abolish it. It is reported rather than tuned away. VALIDATION.md has the
 per-node trace and what it means for the numbers above.
+
+## The working table is not the published table
+
+The thesis printed its rule table as Table 5, two years after the simulations
+were run. `model/thesis_table5/` holds it, and `scripts/05` runs both tables
+through the same engine under the same protocol, so differences are attributable
+to the tables rather than to implementations. They had never been compared.
+
+They agree on the destination — **5 of 7 subsets**, including both headline
+ones: Th17 down, iTreg up. The thesis's central claim holds either way.
+
+They disagree completely on **which miRNA gets there**. Wherever the two miRNAs
+pull in different directions, the working table lands on miR-34c-5p's outcome,
+4 times out of 4; Table 5 lands on miR-155-5p's, 5 times out of 5. That is why
+the Python rebuild reports miR-155-5p as the dominant driver while this
+repository reports miR-34c-5p as epistatic on the Th17 axis. It was never the
+code — the same Table 5 run through two independent engines agrees in all seven
+directions.
+
+It traces to a single rule, and it is the one rule the thesis was trying to
+determine:
+
+```
+working table   miR-34c-5p = (GATA3 | FOS | MYC | TP53 | FOXO3 | SP1) & !STAT3
+thesis Table 5  miR-34c-5p = GATA3 & MYC
+```
+
+A six-way OR against a conjunction. In the working table miR-34c-5p is on 98.5%
+of the time; under Table 5, 4.8%. Table 5 actually gives it *more* target edges
+(16 against 7) — they just never fire. Full workings in COMPARISON.md, including
+a load-bearing typo in Table 5 that kills the IL2 to STAT5 amplification loop.
 
 ## Repairs
 

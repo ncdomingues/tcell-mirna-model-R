@@ -11,6 +11,7 @@
 source("R/ginsim_engine.R")
 source("R/model_io.R")
 source("R/analysis.R")
+source("R/table_diff.R")
 
 .passed <- 0L
 .failed <- character(0)
@@ -313,6 +314,94 @@ ok("the Naldi 2010 and Abou-Jaoude 2015 base tables compile",
                    rules = read_table_file("model/abou_jaoude2015/rules_corrected.txt"))
      length(compile_rules(naldi$nodes, naldi$rules)) == nrow(naldi$rules) &&
        length(compile_rules(aj$nodes, aj$rules)) == nrow(aj$rules)
+   })
+
+
+cat("\nthesis Table 5\n")
+
+t5 <- load_model("model/thesis_table5")
+
+ok("Table 5 has 89 rules over 76 rule-governed nodes",
+   nrow(t5$rules) == 89 && length(unique(t5$rules$target)) == 76)
+
+ok("Table 5 declares the five documented input nodes",
+   setequal(unregulated_nodes(t5$nodes, t5$rules),
+            c("APC-Antigen", "CD3", "CD45RA", "CGC", "CREBBP")))
+
+ok("Table 5 compiles, and warns that IL2R:2 can never be reached",
+   {
+     w <- character(0)
+     withCallingHandlers(compile_rules(t5$nodes, t5$rules),
+                         warning = function(x) {
+                           w <<- c(w, conditionMessage(x)); invokeRestart("muffleWarning")
+                         })
+     any(grepl("IL2R:2", w, fixed = TRUE))
+   })
+
+ok("a threshold above a node's reachable level evaluates false, not an error",
+   {
+     n <- data.frame(node = 1:2, name = c("A", "B"), max_level = c(1L, 1L),
+                     input = c(1L, 0L), stringsAsFactors = FALSE)
+     r <- data.frame(target = 2L, name = "B", value = 1L, formula = "A:2",
+                     stringsAsFactors = FALSE)
+     e <- suppressWarnings(compile_rules(n, r))
+     env <- list2env(list(S = c(1L, 0L)), parent = baseenv())
+     identical(eval(e[[1]], env), FALSE)
+   })
+
+ok("every Table 5 rule has an annotation",
+   {
+     ann <- read.delim("model/thesis_table5/annotations.tsv", sep = "\t",
+                       stringsAsFactors = FALSE, quote = "")
+     nrow(ann) == nrow(t5$rules) && all(nzchar(trimws(ann[[4]])))
+   })
+
+
+cat("\ntable diff\n")
+
+ok("identical formulas are reported identical, not merely equivalent",
+   {
+     d <- diff_tables(t5$nodes, t5$rules, t5$nodes, t5$rules, "a", "b",
+                      n_sample = 50)
+     all(d$verdict == "identical")
+   })
+
+ok("a regrouped but equivalent formula is recognised as equivalent",
+   {
+     n <- data.frame(node = 1:3, name = c("X", "Y", "Z"), max_level = rep(1L, 3),
+                     input = c(1L, 1L, 0L), stringsAsFactors = FALSE)
+     ra <- data.frame(target = 3L, name = "Z", value = 1L,
+                      formula = "X | (X & Y)", stringsAsFactors = FALSE)
+     rb <- data.frame(target = 3L, name = "Z", value = 1L,
+                      formula = "X", stringsAsFactors = FALSE)
+     d <- diff_tables(n, ra, n, rb, "a", "b", n_sample = 200)
+     d$verdict == "equivalent"
+   })
+
+ok("a genuinely different formula is reported as differing",
+   {
+     n <- data.frame(node = 1:3, name = c("X", "Y", "Z"), max_level = rep(1L, 3),
+                     input = c(1L, 1L, 0L), stringsAsFactors = FALSE)
+     ra <- data.frame(target = 3L, name = "Z", value = 1L, formula = "X & Y",
+                      stringsAsFactors = FALSE)
+     rb <- data.frame(target = 3L, name = "Z", value = 1L, formula = "X | Y",
+                      stringsAsFactors = FALSE)
+     d <- diff_tables(n, ra, n, rb, "a", "b", n_sample = 200)
+     d$verdict == "differs"
+   })
+
+ok("a renamed node is not reported as a rewritten rule",
+   {
+     na <- data.frame(node = 1:2, name = c("X", "NFKB1"), max_level = c(1L, 1L),
+                      input = c(1L, 0L), stringsAsFactors = FALSE)
+     ra <- data.frame(target = 2L, name = "NFKB1", value = 1L, formula = "X",
+                      stringsAsFactors = FALSE)
+     nb <- data.frame(node = 1:2, name = c("X", "NFKB"), max_level = c(1L, 1L),
+                      input = c(1L, 0L), stringsAsFactors = FALSE)
+     rb <- data.frame(target = 2L, name = "NFKB", value = 1L, formula = "X",
+                      stringsAsFactors = FALSE)
+     d <- diff_tables(na, ra, nb, rb, "a", "b", n_sample = 50)
+     nrow(d) == 1 && d$verdict == "identical"
    })
 
 

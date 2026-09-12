@@ -12,7 +12,8 @@ scripts <- c("tests/test_engine.R",
              "scripts/01_stimulations.R",
              "scripts/02_mirna_conditions.R",
              "scripts/03_mir34c_tf_variants.R",
-             "scripts/04_validate_naldi.R")
+             "scripts/04_validate_naldi.R",
+             "scripts/05_compare_tables.R")
 
 for (s in scripts) {
   cat("\n", strrep("=", 78), "\n", s, "\n", strrep("=", 78), "\n", sep = "")

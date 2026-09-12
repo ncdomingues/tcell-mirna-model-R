@@ -103,9 +103,34 @@ compile_rules <- function(nodes, rules) {
   order_var <- get_order_var(nodes)
   text      <- trimws(rules[, 4])
 
+  # A formula may reference a level the node table does not declare. In the
+  # thesis Table 5 transcription, `STAT5 = IL2R:2 | IL4R:2` reads IL2R at level
+  # 2 while every IL2R rule targets level 1, so that term can never be true --
+  # a dead branch, and worth saying so out loud. Substitute up to whatever level
+  # is actually referenced so the formula still compiles and evaluates false,
+  # which is what the reference means.
+  tokens <- unlist(regmatches(text, gregexpr("[A-Za-z][A-Za-z0-9_.-]*:[0-9]+", text)))
+  referenced <- rep(0L, nrow(nodes))
+  if (length(tokens)) {
+    tok_name  <- sub(":[0-9]+$", "", tokens)
+    tok_level <- as.integer(sub("^.*:", "", tokens))
+    for (i in seq_along(tokens)) {
+      idx <- match(tok_name[i], nodes[, 2])
+      if (!is.na(idx)) referenced[idx] <- max(referenced[idx], tok_level[i])
+    }
+  }
+  dead <- which(referenced > nodes[, 3])
+  if (length(dead)) {
+    warning("threshold reference above the node's reachable level (always ",
+            "false): ",
+            paste0(nodes[dead, 2], ":", referenced[dead], " but ",
+                   nodes[dead, 2], " tops out at ", nodes[dead, 3],
+                   collapse = "; "), call. = FALSE)
+  }
+
   for (idx in order_var) {
     var_name  <- nodes[idx, 2]
-    max_value <- nodes[idx, 3]
+    max_value <- max(nodes[idx, 3], referenced[idx])
 
     # `NAME:k` means "NAME is at level >= k". Resolve the thresholds before the
     # bare name, highest first, so `IL2R:2` is never clipped to `IL2R` + ":2".
